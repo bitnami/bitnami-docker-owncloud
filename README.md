@@ -243,7 +243,7 @@ Available variables:
  - `OWNCLOUD_USERNAME`: Owncloud application username. Default: **user**
  - `OWNCLOUD_PASSWORD`: Owncloud application password. Default: **bitnami**
  - `OWNCLOUD_EMAIL`: Owncloud application email. Default: **user@example.com**
- - `OWNCLOUD_WEB_SERVER_HOST`: Owncloud Host Server.
+ - `OWNCLOUD_HOST`: Owncloud Host Server.
  - `MARIADB_PASSWORD`: Root password for the MariaDB.
  - `MARIADB_HOST`: Hostname for MariaDB server. Default: **mariadb**
  - `MARIADB_PORT_NUMBER`: Port used by MariaDB server. Default: **3306**
