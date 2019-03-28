@@ -1,7 +1,3 @@
-[![CircleCI](https://circleci.com/gh/bitnami/bitnami-docker-owncloud/tree/master.svg?style=shield)](https://circleci.com/gh/bitnami/bitnami-docker-owncloud/tree/master)
-[![Slack](https://img.shields.io/badge/slack-join%20chat%20%E2%86%92-e01563.svg)](http://slack.oss.bitnami.com)
-[![Kubectl](https://img.shields.io/badge/kubectl-Available-green.svg)](https://raw.githubusercontent.com/bitnami/bitnami-docker-owncloud/master/kubernetes.yml)
-
 # What is ownCloud?
 
 ownCloud is a file sharing server that puts the control and security of your own data back into your hands.
@@ -17,23 +13,34 @@ $ curl -sSL https://raw.githubusercontent.com/bitnami/bitnami-docker-owncloud/ma
 $ docker-compose up -d
 ```
 
-## Kubernetes
-
-> **WARNING:** This is a beta configuration, currently unsupported.
-
-Get the raw URL pointing to the `kubernetes.yml` manifest and use `kubectl` to create the resources on your Kubernetes cluster like so:
-
-```bash
-$ kubectl create -f https://raw.githubusercontent.com/bitnami/bitnami-docker-owncloud/master/kubernetes.yml
-```
-
 # Why use Bitnami Images?
 
 * Bitnami closely tracks upstream source changes and promptly publishes new versions of this image using our automated systems.
 * With Bitnami images the latest bug fixes and features are available as soon as possible.
 * Bitnami containers, virtual machines and cloud images use the same components and configuration approach - making it easy to switch between formats based on your project needs.
-* Bitnami images are built on CircleCI and automatically pushed to the Docker Hub.
 * All our images are based on [minideb](https://github.com/bitnami/minideb) a minimalist Debian based container image which gives you a small base container image and the familiarity of a leading linux distribution.
+* Bitnami container images are released daily with the latest distribution packages available.
+
+
+> This [CVE scan report](https://quay.io/repository/bitnami/owncloud?tab=tags) contains a security report with all open CVEs. To get the list of actionable security issues, find the "latest" tag, click the vulnerability report link under the corresponding "Security scan" field and then select the "Only show fixable" filter on the next page.
+
+# How to deploy ownCloud in Kubernetes?
+
+Deploying Bitnami applications as Helm Charts is the easiest way to get started with our applications on Kubernetes. Read more about the installation in the [Bitnami ownCloud Chart GitHub repository](https://github.com/bitnami/charts/tree/master/upstreamed/owncloud).
+
+Bitnami containers can be used with [Kubeapps](https://kubeapps.com/) for deployment and management of Helm Charts in clusters.
+
+# Supported tags and respective `Dockerfile` links
+
+> NOTE: Debian 8 images have been deprecated in favor of Debian 9 images. Bitnami will not longer publish new Docker images based on Debian 8.
+
+Learn more about the Bitnami tagging policy and the difference between rolling tags and immutable tags [in our documentation page](https://docs.bitnami.com/containers/how-to/understand-rolling-tags-containers/).
+
+
+* [`10-ol-7`, `10.1.0-ol-7-r44` (10/ol-7/Dockerfile)](https://github.com/bitnami/bitnami-docker-owncloud/blob/10.1.0-ol-7-r44/10/ol-7/Dockerfile)
+* [`10-debian-9`, `10.1.0-debian-9-r42`, `10`, `10.1.0`, `10.1.0-r42`, `latest` (10/debian-9/Dockerfile)](https://github.com/bitnami/bitnami-docker-owncloud/blob/10.1.0-debian-9-r42/10/debian-9/Dockerfile)
+
+Subscribe to project updates by watching the [bitnami/owncloud GitHub repo](https://github.com/bitnami/bitnami-docker-owncloud).
 
 # Prerequisites
 
@@ -54,10 +61,18 @@ services:
     image: 'bitnami/mariadb:latest'
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
+      - MARIADB_USER=bn_owncloud
+      - MARIADB_DATABASE=bitnami_owncloud
     volumes:
       - 'mariadb_data:/bitnami'
   owncloud:
     image: 'bitnami/owncloud:latest'
+    environment:
+      - MARIADB_HOST=mariadb
+      - MARIADB_PORT_NUMBER=3306
+      - OWNCLOUD_DATABASE_USER=bn_owncloud
+      - OWNCLOUD_DATABASE_NAME=bitnami_owncloud
+      - ALLOW_EMPTY_PASSWORD=yes
     ports:
       - '80:80'
       - '443:443'
@@ -82,18 +97,32 @@ If you want to run the application manually instead of using docker-compose, the
   $ docker network create owncloud-tier
   ```
 
-2. Start a MariaDB database in the network generated:
+2. Create a volume for MariaDB persistence and create a MariaDB container
 
   ```bash
-  $ docker run -d --name mariadb -e ALLOW_EMPTY_PASSWORD=yes --net=owncloud-tier bitnami/mariadb
+  $ docker volume create --name mariadb_data
+  $ docker run -d --name mariadb \
+    -e ALLOW_EMPTY_PASSWORD=yes \
+    -e MARIADB_USER=bn_owncloud \
+    -e MARIADB_DATABASE=bitnami_owncloud \
+    --net owncloud-tier \
+    --volume mariadb_data:/bitnami \
+    bitnami/mariadb:latest
   ```
 
   *Note:* You need to give the container a name in order to OwnCloud to resolve the host
 
-3. Run the OwnCloud container:
+3. Create volumes for Owncloud persistence and launch the container
 
   ```bash
-  $ docker run -d -p 80:80 --name owncloud --net=owncloud-tier bitnami/owncloud
+  $ docker volume create --name owncloud_data
+  $ docker run -d --name owncloud -p 80:80 -p 443:443 \
+    -e ALLOW_EMPTY_PASSWORD=yes \
+    -e OWNCLOUD_DATABASE_USER=bn_owncloud \
+    -e OWNCLOUD_DATABASE_NAME=bitnami_owncloud \
+    --net owncloud-tier \
+    --volume owncloud_data:/bitnami \
+    bitnami/owncloud:latest
   ```
 
 Then you can access your application at http://your-ip/
@@ -128,10 +157,16 @@ services:
     image: 'bitnami/mariadb:latest'
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
+      - MARIADB_USER=bn_owncloud
+      - MARIADB_DATABASE=bitnami_owncloud
     volumes:
       - '/path/to/mariadb-persistence:/bitnami'
   owncloud:
     image: 'bitnami/owncloud:latest'
+    environment:
+      - OWNCLOUD_DATABASE_USER=bn_owncloud
+      - OWNCLOUD_DATABASE_NAME=bitnami_owncloud
+      - ALLOW_EMPTY_PASSWORD=yes
     depends_on:
       - mariadb
     ports:
@@ -154,7 +189,10 @@ In this case you need to specify the directories to mount on the run command. Th
 2. Create a MariaDB container with host volume:
 
   ```bash
-  $ docker run -d --name mariadb -e ALLOW_EMPTY_PASSWORD=yes \
+  $ docker run -d --name mariadb \
+    -e ALLOW_EMPTY_PASSWORD=yes \
+    -e MARIADB_USER=bn_owncloud \
+    -e MARIADB_DATABASE=bitnami_owncloud \
     --net owncloud-tier \
     --volume /path/to/mariadb-persistence:/bitnami \
     bitnami/mariadb:latest
@@ -166,6 +204,9 @@ In this case you need to specify the directories to mount on the run command. Th
 
   ```bash
   $ docker run -d --name owncloud -p 80:80 -p 443:443 \
+    -e ALLOW_EMPTY_PASSWORD=yes \
+    -e OWNCLOUD_DATABASE_USER=bn_owncloud \
+    -e OWNCLOUD_DATABASE_NAME=bitnami_owncloud \
     --net owncloud-tier \
     --volume /path/to/owncloud-persistence:/bitnami \
     bitnami/owncloud:latest
@@ -203,14 +244,46 @@ You can use these snapshots to restore the application state should the upgrade 
 
 5. Run the new image
 
-  * For docker-compose: `$ docker-compose start owncloud`
+  * For docker-compose: `$ docker-compose up owncloud`
   * For manual execution ([mount](#mount-persistent-folders-manually) the directories if needed): `docker run --name owncloud bitnami/owncloud:latest`
 
 # Configuration
 
 ## Environment variables
 
-When you start the owncloud image, you can adjust the configuration of the instance by passing one or more environment variables either on the docker-compose file or on the docker run command line. If you want to add a new environment variable:
+When you start the owncloud image, you can adjust the configuration of the instance by passing one or more environment variables either on the docker-compose file or on the docker run command line.
+
+##### User and Site configuration
+
+ - `APACHE_HTTP_PORT_NUMBER`: Port used by Apache for HTTP. Default: **80**
+ - `APACHE_HTTPS_PORT_NUMBER`: Port used by Apache for HTTPS. Default: **443**
+ - `OWNCLOUD_USERNAME`: Owncloud application username. Default: **user**
+ - `OWNCLOUD_PASSWORD`: Owncloud application password. Default: **bitnami**
+ - `OWNCLOUD_EMAIL`: Owncloud application email. Default: **user@example.com**
+ - `OWNCLOUD_WEB_SERVER_HOST`: Owncloud Host Server.
+
+##### Use an existing database
+
+- `MARIADB_HOST`: Hostname for MariaDB server. Default: **mariadb**
+- `MARIADB_PORT_NUMBER`: Port used by MariaDB server. Default: **3306**
+- `OWNCLOUD_DATABASE_NAME`: Database name that ownCloud will use to connect with the database. Default: **bitnami_owncloud**
+- `OWNCLOUD_DATABASE_USER`: Database user that ownCloud will use to connect with the database. Default: **bn_owncloud**
+- `OWNCLOUD_DATABASE_PASSWORD`: Database password that ownCloud will use to connect with the database. No defaults.
+- `ALLOW_EMPTY_PASSWORD`: It can be used to allow blank passwords. Default: **no**
+
+##### Create a database for ownCloud using mysql-client
+
+- `MARIADB_HOST`: Hostname for MariaDB server. Default: **mariadb**
+- `MARIADB_PORT_NUMBER`: Port used by MariaDB server. Default: **3306**
+- `MARIADB_ROOT_USER`: Database admin user. Default: **root**
+- `MARIADB_ROOT_PASSWORD`: Database password for the `MARIADB_ROOT_USER` user. No defaults.
+- `MYSQL_CLIENT_CREATE_DATABASE_NAME`: New database to be created by the mysql client module. No defaults.
+- `MYSQL_CLIENT_CREATE_DATABASE_USER`: New database user to be created by the mysql client module. No defaults.
+- `MYSQL_CLIENT_CREATE_DATABASE_PASSWORD`: Database password for the `MYSQL_CLIENT_CREATE_DATABASE_USER` user. No defaults.
+- `ALLOW_EMPTY_PASSWORD`: It can be used to allow blank passwords. Default: **no**
+
+
+If you want to add a new environment variable:
 
  * For docker-compose add the variable name and value under the application section:
 
@@ -236,25 +309,11 @@ owncloud:
     bitnami/owncloud:latest
   ```
 
-Available variables:
-
- - `APACHE_HTTP_PORT_NUMBER`: Port used by Apache for HTTP. Default: **80**
- - `APACHE_HTTPS_PORT_NUMBER`: Port used by Apache for HTTPS. Default: **443**
- - `OWNCLOUD_USERNAME`: Owncloud application username. Default: **user**
- - `OWNCLOUD_PASSWORD`: Owncloud application password. Default: **bitnami**
- - `OWNCLOUD_EMAIL`: Owncloud application email. Default: **user@example.com**
- - `OWNCLOUD_HOST`: Owncloud Host Server.
- - `MARIADB_PASSWORD`: Root password for the MariaDB.
- - `MARIADB_HOST`: Hostname for MariaDB server. Default: **mariadb**
- - `MARIADB_PORT_NUMBER`: Port used by MariaDB server. Default: **3306**
-
 # Contributing
 
 We'd love for you to contribute to this container. You can request new features by creating an [issue](https://github.com/bitnami/bitnami-docker-owncloud/issues), or submit a [pull request](https://github.com/bitnami/bitnami-docker-owncloud/pulls) with your contribution.
 
 # Issues
-
-If you encountered a problem running this container, you can file an [issue](https://github.com/bitnami/bitnami-docker-owncloud/issues). For us to provide better support, be sure to include the following information in your issue:
 
 - Host OS and version
 - Docker version (`docker version`)
@@ -262,15 +321,9 @@ If you encountered a problem running this container, you can file an [issue](htt
 - Version of this container (`echo $BITNAMI_IMAGE_VERSION` inside the container)
 - The command you used to run the container, and any relevant output you saw (masking any sensitive information)
 
-# Community
-
-Most real time communication happens in the `#containers` channel at [bitnami-oss.slack.com](http://bitnami-oss.slack.com); you can sign up at [slack.oss.bitnami.com](http://slack.oss.bitnami.com).
-
-Discussions are archived at [bitnami-oss.slackarchive.io](https://bitnami-oss.slackarchive.io).
-
 # License
 
-Copyright 2016-2017 Bitnami
+Copyright 2016-2019 Bitnami
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

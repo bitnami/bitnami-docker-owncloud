@@ -4,10 +4,9 @@
 . /opt/bitnami/base/helpers
 
 print_welcome_page
-check_for_updates &
 
-if [[ "$1" == "nami" && "$2" == "start" ]] || [[ "$1" == "/init.sh" ]]; then
-  nami_initialize apache php owncloud
+if [[ "$1" == "nami" && "$2" == "start" ]] || [[ "$1" == "httpd" ]]; then
+  nami_initialize apache php mysql-client libphp owncloud
   info "Starting owncloud... "
 fi
 
